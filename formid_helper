@@ -1,0 +1,36 @@
+/**
+ * 获取小程序用户对应的formid
+ * @param openid
+ * @param finalCallback
+ */
+const getCaimiWxappValidFormId = function(openid,finalCallback){
+    let key = ':openid_form_ids';
+    weixin_redis_helper.lpop(key+openid,(err,result)=>{//从头部取一个
+        if(!err && result){
+            result = JSON.parse(result);
+            if(result['time']>new Date().getTime()-86400*1000*7+3600000){//７天算过期　舍弃
+                finalCallback(null,result['form_id']);
+            } else {
+                getCaimiWxappValidFormId(openid,finalCallback);//不符合则接着取
+            }
+        } else {
+            finalCallback('no result');
+        }
+    })
+}
+
+/**
+ * 保存小程序formid
+ * @param openid
+ * @param form_id
+ * @param finalCallback
+ */
+const saveCaimiWxappFormIds = function(openid,form_id,finalCallback){
+    let key = ':openid_form_ids';
+    count_redis_helper.rpush(key+openid,JSON.stringify({
+        "form_id":form_id,
+        "time":new Date().getTime()
+    }),_=>{//从尾插入
+        finalCallback();
+    })
+}
