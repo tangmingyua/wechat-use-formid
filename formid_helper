@@ -34,3 +34,65 @@ const saveCaimiWxappFormIds = function(openid,form_id,finalCallback){
         finalCallback();
     })
 }
+
+/**
+ * 获取小程序的access_token
+ * @param settings
+ * @returns {Promise<any>}
+ */
+const getWxappAccessToken = function(settings){
+    return new Promise((resolve,reject)=>{
+        let key = 'caimi_wxapp_accesstoken';
+        fes_redis_helper.get(key,(err,result)=>{
+            if(!err && result){
+                resolve(result);
+            } else {
+                request.get('https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid='+settings['wxapp_config']['appid']+'&secret='+settings['wxapp_config']['secret'],(err,res,body)=>{
+                    if(!err && body){
+                        body = JSON.parse(body);
+                        if(body['access_token']){
+                            fes_redis_helper.setex(key,7000,body['access_token'],_=>{
+                                resolve(body['access_token']);
+                            })
+                        } else {
+                            reject('fail to get token');
+                        }
+                    } else {
+                        reject('fail to get token');
+                    }
+                })
+            }
+        })
+    })
+}
+
+/**
+ * 小程序发送模板信息
+ * @param access_token
+ * @param touser_openid
+ * @param template_id
+ * @param page
+ * @param form_id
+ * @param data
+ * @param emphasis_keyword
+ * @param finalCallback
+ */
+const sendTemplateMessage = function(access_token,touser_openid,template_id,page,form_id,data,emphasis_keyword,finalCallback){
+    let options = {
+        "touser":touser_openid,
+        "template_id":template_id,
+        "form_id":form_id
+    };
+    if(page){//若存在跳转地址
+        options['page'] = page;
+    }
+    if(data){//若存在模板内容
+        options['data'] = data;
+    }
+    if(emphasis_keyword){//若存在放大关键词
+        options['emphasis_keyword'] = emphasis_keyword;
+    }debugger
+    request.post({"url":'https://api.weixin.qq.com/cgi-bin/message/wxopen/template/send?access_token='+access_token,"json":options},(err,res,body)=>{debugger
+        finalCallback(err,body);
+    })
+}
